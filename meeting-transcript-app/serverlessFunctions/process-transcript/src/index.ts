@@ -145,7 +145,10 @@ const createTaskInTwenty = async (
   };
 
   if (actionItem.dueDate) {
-    taskData.dueAt = new Date(actionItem.dueDate).toISOString();
+    const date = new Date(actionItem.dueDate);
+    if (!isNaN(date.getTime())) {
+      taskData.dueAt = date.toISOString();
+    }
   }
 
   try {
@@ -166,6 +169,7 @@ const createTaskInTwenty = async (
         ? JSON.stringify(error.response.data, null, 2)
         : error.message;
       const status = error.response?.status;
+      console.error(`Failed to create task "${actionItem.title}": ${errorMessage}. Status: ${status}`);
       throw new Error(
         `Failed to create task "${actionItem.title}": ${errorMessage}. Status: ${status}`,
       );
