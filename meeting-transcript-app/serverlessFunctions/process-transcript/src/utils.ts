@@ -1,61 +1,54 @@
-// utils.ts
-
 import axios from 'axios';
 
-// --- TYPES (Adhering to "Types over interfaces") ---
-
 type TwentyRecordType = 'notes' | 'tasks';
+type RelatedTo = { type: 'Person' | 'Company'; id: string };
+type NotePayload = { title: string; body: string; relatedTo: RelatedTo };
+type TaskPayload = { title: string; status: 'TODO' | 'DONE'; relatedTo: RelatedTo };
 
-type RelatedTo = {
-  type: 'Person' | 'Company'; // Simplified types for this scope
-  id: string;
-};
-
-type NotePayload = {
-  title: string;
-  body: string; // Markdown content
-  relatedTo: RelatedTo;
-};
-
-type TaskPayload = {
-  title: string;
-  status: 'TODO' | 'DONE';
-  relatedTo: RelatedTo;
-  // Note: Twenty CRM typically auto-assigns the API key user if assigneeId is null
-  // assigneeId?: string; 
-};
-
-// --- CORE API FUNCTIONALITY ---
-
-/**
- * Executes a POST request to the local Twenty CRM API.
- * @param endpoint The resource endpoint (e.g., 'notes', 'tasks')
- * @param data The JSON payload for the new record
- * @returns The response data from the CRM
- */
 export const createTwentyRecord = async (
   endpoint: TwentyRecordType,
-  data: NotePayload | TaskPayload,
+  data: NotePayload | TaskPayload
 ): Promise<object> => {
-  const TWENTY_BASE_URL = process.env.TWENTY_BASE_URL || 'http://localhost:3000';
+  const TWENTY_BASE_URL = process.env.TWENTY_BASE_URL || 'https://unpaid-interns.twenty.com';
   const TWENTY_API_KEY = process.env.TWENTY_API_KEY;
-
-  if (!TWENTY_API_KEY) {
-    throw new Error('TWENTY_API_KEY is not defined in the environment.');
-  }
+  if (!TWENTY_API_KEY) throw new Error('❌ TWENTY_API_KEY missing');
 
   const url = `${TWENTY_BASE_URL}/rest/${endpoint}`;
+  const relationKey = data.relatedTo.type === 'Person' ? 'persons' : 'companies';
+
+  // ✅ Use correct field name "body" (not noteContent)
+  const formattedData =
+    endpoint === 'notes'
+      ? {
+          title: (data as any).title,
+          body: (data as any).body,
+          [relationKey]: { connect: [{ id: data.relatedTo.id }] },
+        }
+      : {
+          title: (data as any).title,
+          status: (data as any).status,
+          [relationKey]: { connect: [{ id: data.relatedTo.id }] },
+        };
+
+  console.log(`🧠 Sending payload to ${url}:`, JSON.stringify(formattedData, null, 2));
 
   try {
-    const response = await axios.post(url, data, {
+    const response = await axios.post(url, formattedData, {
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${TWENTY_API_KEY}`,
       },
     });
+    console.log(`✅ Created ${endpoint}:`, response.data);
     return response.data;
   } catch (error: any) {
-    console.error(`Error creating Twenty record on ${endpoint}:`, error.response?.data || error.message);
-    throw new Error(`Failed to create Twenty record. Details: ${error.response?.data?.message || error.message}`);
+    console.error('❌ ERROR RESPONSE:', error.response?.data || error.message);
+    throw new Error(
+      `Failed to create Twenty record. Details: ${
+        JSON.stringify(error.response?.data || error.message)
+      }`
+    );
   }
 };
+
+
