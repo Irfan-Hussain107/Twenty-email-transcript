@@ -1,4 +1,5 @@
 // index.ts
+
 import axios from 'axios';
 import OpenAI from 'openai';
 
@@ -6,6 +7,7 @@ import OpenAI from 'openai';
 
 type TranscriptWebhookPayload = {
   transcript: string;
+  relatedPersonId: string; // Added for person relation
   meetingTitle?: string;
   meetingDate?: string;
   participants?: string[];
@@ -43,24 +45,21 @@ type TwentyApiResponse = {
 };
 
 // --- CONFIGURATION ---
-// These variables are sourced from your .env file
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY; 
 const WEBHOOK_SECRET_TOKEN = process.env.WEBHOOK_SECRET_TOKEN;
 const TWENTY_API_URL = process.env.TWENTY_API_URL;
 const GROQ_API_BASE_URL = process.env.GROQ_API_BASE_URL;
 
-// 🟢 CRITICAL FIX: Use a supported Groq model ID for the API call
 const LLM_MODEL_ID = 'openai/gpt-oss-20b'; 
-const OPENAI_MODEL_LOG_NAME = 'openai/gpt-oss-20b'; // Used only for logging, as requested
+const OPENAI_MODEL_LOG_NAME = 'openai/gpt-oss-20b';
 const OPENAI_TEMPERATURE = 0.3; 
 
-// Initialize client, redirecting the OpenAI SDK to the Groq endpoint
 const openai = new OpenAI({ 
   apiKey: OPENAI_API_KEY, 
   baseURL: GROQ_API_BASE_URL, 
 });
 
-// --- UTILITY FUNCTIONS (CRM Logic - Unchanged) ---
+// --- UTILITY FUNCTIONS (CRM Logic) ---
 
 const getTwentyApiConfig = () => {
   const apiKey = process.env.TWENTY_API_KEY;
@@ -84,6 +83,7 @@ const formatNoteBody = (summary: string, keyPoints: string[]): string => {
 const createNoteInTwenty = async (
   summary: string,
   keyPoints: string[],
+  relatedPersonId: string,
   meetingTitle?: string,
   meetingDate?: string,
 ): Promise<TwentyApiResponse> => {
@@ -112,6 +112,37 @@ const createNoteInTwenty = async (
         },
       },
     );
+    
+    // Try to link the note to the person using GraphQL
+    try {
+      const graphqlMutation = {
+        query: `
+          mutation UpdateNote($noteId: ID!, $personId: ID!) {
+            updateNote(id: $noteId, data: { noteTargets: { connect: [{ personId: $personId }] } }) {
+              id
+            }
+          }
+        `,
+        variables: { 
+          noteId: data.id,
+          personId: relatedPersonId 
+        },
+      };
+      
+      await axios.post(
+        `${baseUrl}/graphql`,
+        graphqlMutation,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+        },
+      );
+    } catch (linkError) {
+      console.warn('Failed to link note to person (non-critical):', (linkError as any).message);
+    }
+    
     return data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -194,7 +225,6 @@ const createTasksFromActionItems = async (
       taskIds.push(task.id);
     } catch (error) {
       console.error(`Task creation failed for "${actionItem.title}"`);
-      // Task creation failed, continue with next task
     }
   }
 
@@ -218,15 +248,13 @@ const createTasksFromCommitments = async (
       taskIds.push(task.id);
     } catch (error) {
       console.error(`Commitment task creation failed for "${commitment.commitment}"`);
-      // Commitment task creation failed, continue with next commitment
     }
   }
 
   return taskIds;
 };
 
-
-// --- CORE AI ANALYSIS FUNCTION (MODIFIED FOR GROQ) ---
+// --- CORE AI ANALYSIS FUNCTION ---
 
 const analyzeTranscript = async (
   transcript: string,
@@ -238,7 +266,6 @@ const analyzeTranscript = async (
     throw new Error('GROQ_API_BASE_URL environment variable is not set');
   }
 
-  // Initialize the OpenAI client, overriding the endpoint for Groq
   const openai = new OpenAI({ 
     apiKey: openaiApiKey,
     baseURL: groqBaseUrl, 
@@ -262,7 +289,6 @@ Transcript:
 ${transcript}`;
 
   const completion = await openai.chat.completions.create({
-    // 🟢 USING CHAT COMPLETION for structured JSON (Standard API method)
     model: LLM_MODEL_ID, 
     messages: [
       {
@@ -287,7 +313,6 @@ ${transcript}`;
   return JSON.parse(content) as AnalysisResult;
 };
 
-
 // --- MAIN SERVERLESS FUNCTION ENTRY POINT ---
 
 export const main = async (
@@ -295,8 +320,8 @@ export const main = async (
 ): Promise<object> => {
   const webhookToken = params.token; 
   const expectedSecret = process.env.WEBHOOK_SECRET_TOKEN;
+  const relatedPersonId = params.relatedPersonId;
   
-  // SECURITY CHECK
   if (webhookToken !== expectedSecret || !expectedSecret) {
     throw new Error('Unauthorized webhook access: Invalid or missing token.');
   }
@@ -312,18 +337,16 @@ export const main = async (
     throw new Error('OPENAI_API_KEY environment variable is not set');
   }
 
-  // 1. Analyze Transcript using Groq
   const analysis = await analyzeTranscript(transcript, openaiApiKey);
 
-  // 2. Create Note in Twenty CRM
   const note = await createNoteInTwenty(
     analysis.summary,
     analysis.keyPoints,
+    relatedPersonId,
     meetingTitle,
     meetingDate,
   );
 
-  // 3. Create Tasks for Action Items and Commitments
   const actionItemTaskIds = await createTasksFromActionItems(
     analysis.actionItems,
     note.id,
@@ -335,7 +358,6 @@ export const main = async (
 
   const allTaskIds = [...actionItemTaskIds, ...commitmentTaskIds];
 
-  // 4. Return Final Success Payload
   return {
     success: true,
     noteId: note.id,
