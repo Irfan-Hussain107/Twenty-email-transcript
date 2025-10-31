@@ -26,7 +26,7 @@
       "value": "",
       "description": "API key for authenticating with the OpenAI service."
     },
-    "TWENTY_BASE_URL": {
+    "TWENTY_API_URL": {
       "isSecret": false,
       "value": "https://unpaid-interns.twenty.com",
       "description": "The base URL for the Twenty CRM server (e.g., https://your-instance.twenty.com)."
@@ -35,6 +35,11 @@
       "isSecret": true,
       "value": "",
       "description": "Secret token used to authenticate incoming webhook requests."
+    },
+    "GROQ_API_BASE_URL": {
+      "isSecret": true,
+      "value": "",
+      "description": "Groq API base URL."
     }
   },
   "dependencies": {
