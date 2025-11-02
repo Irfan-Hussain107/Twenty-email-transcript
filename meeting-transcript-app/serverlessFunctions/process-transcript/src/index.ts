@@ -1,18 +1,15 @@
-// index.ts
-
 import axios from 'axios';
 import OpenAI from 'openai';
 
-// --- TYPES (Adhering to Twenty's Principles) ---
 
 type TranscriptWebhookPayload = {
   transcript: string;
-  relatedPersonId: string; // Added for person relation
+  relatedPersonId: string;
   meetingTitle?: string;
   meetingDate?: string;
   participants?: string[];
   metadata?: Record<string, unknown>;
-  token?: string; // Webhook authentication token
+  token?: string;
 };
 
 type ActionItem = {
@@ -44,14 +41,12 @@ type TwentyApiResponse = {
   id: string;
 };
 
-// --- CONFIGURATION ---
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY; 
 const WEBHOOK_SECRET_TOKEN = process.env.WEBHOOK_SECRET_TOKEN;
 const TWENTY_API_URL = process.env.TWENTY_API_URL;
 const GROQ_API_BASE_URL = process.env.GROQ_API_BASE_URL;
 
 const LLM_MODEL_ID = 'openai/gpt-oss-20b'; 
-const OPENAI_MODEL_LOG_NAME = 'openai/gpt-oss-20b';
 const OPENAI_TEMPERATURE = 0.3; 
 
 const openai = new OpenAI({ 
@@ -59,7 +54,6 @@ const openai = new OpenAI({
   baseURL: GROQ_API_BASE_URL, 
 });
 
-// --- UTILITY FUNCTIONS (CRM Logic) ---
 
 const getTwentyApiConfig = () => {
   const apiKey = process.env.TWENTY_API_KEY;
@@ -75,12 +69,108 @@ const getTwentyApiConfig = () => {
   return { apiKey, baseUrl };
 };
 
+const lookupWorkspaceMemberByName = async (
+  name: string,
+): Promise<string | null> => {
+  const { apiKey, baseUrl } = getTwentyApiConfig();
+  
+  try {
+    const graphqlQuery = {
+      query: `
+        query GetAllWorkspaceMembers {
+          workspaceMembers {
+            edges {
+              node {
+                id
+                name {
+                  firstName
+                  lastName
+                }
+              }
+            }
+          }
+        }
+      `,
+    };
+    
+    const response = await axios.post(
+      `${baseUrl}/graphql`,
+      graphqlQuery,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+      },
+    );
+    
+    const edges = response.data?.data?.workspaceMembers?.edges;
+    
+    if (!edges || edges.length === 0) {
+      console.log('⚠️ No workspace members found');
+      return null;
+    }
+
+    const searchName = name.trim().toLowerCase();
+    
+    for (const edge of edges) {
+      const firstName = edge.node.name?.firstName || '';
+      const lastName = edge.node.name?.lastName || '';
+      const fullName = `${firstName} ${lastName}`.trim().toLowerCase();
+      
+      if (fullName === searchName) {
+        console.log(`✅ Found workspace member (exact): ${firstName} ${lastName} (ID: ${edge.node.id})`);
+        return edge.node.id;
+      }
+    }
+    
+    for (const edge of edges) {
+      const firstName = edge.node.name?.firstName || '';
+      if (firstName.toLowerCase() === searchName) {
+        const lastName = edge.node.name?.lastName || '';
+        console.log(`✅ Found workspace member (first name): ${firstName} ${lastName} (ID: ${edge.node.id})`);
+        return edge.node.id;
+      }
+    }
+    
+    for (const edge of edges) {
+      const lastName = edge.node.name?.lastName || '';
+      if (lastName.toLowerCase() === searchName) {
+        const firstName = edge.node.name?.firstName || '';
+        console.log(`✅ Found workspace member (last name): ${firstName} ${lastName} (ID: ${edge.node.id})`);
+        return edge.node.id;
+      }
+    }
+    
+    for (const edge of edges) {
+      const firstName = edge.node.name?.firstName || '';
+      const lastName = edge.node.name?.lastName || '';
+      const fullName = `${firstName} ${lastName}`.trim().toLowerCase();
+      
+      if (fullName.includes(searchName) || searchName.includes(fullName)) {
+        console.log(`✅ Found workspace member (partial): ${firstName} ${lastName} (ID: ${edge.node.id})`);
+        return edge.node.id;
+      }
+    }
+    
+    console.log(`⚠️ No workspace member found matching: "${name}"`);
+    return null;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const errorMessage = error.response?.data
+        ? JSON.stringify(error.response.data, null, 2)
+        : error.message;
+      console.error(`❌ Failed to lookup workspace member "${name}": ${errorMessage}`);
+    }
+    return null;
+  }
+};
+
 const formatNoteBody = (summary: string, keyPoints: string[]): string => {
   const keyPointsList = keyPoints.map((point) => `- ${point}`).join('\n');
   return `## Summary\n\n${summary}\n\n## Key Points\n\n${keyPointsList}\n\n*Generated from meeting transcript*`;
 };
 
-// FIX: Link note to person using REST API after creation
 const linkNoteToPersonREST = async (
   noteId: string,
   personId: string,
@@ -159,7 +249,6 @@ const createNoteInTwenty = async (
     const responseJson = JSON.stringify(response.data);
     console.log('📦 Note API Response:', responseJson);
     
-    // Twenty CRM REST API returns: { data: { createNote: { id: "...", ... } } }
     const noteId = response.data?.data?.createNote?.id;
     
     if (!noteId) {
@@ -170,7 +259,6 @@ const createNoteInTwenty = async (
     
     console.log(`✅ Note ID extracted: ${noteId}`);
     
-    // FIX: Link note to person using REST API
     await linkNoteToPersonREST(noteId, relatedPersonId);
     
     return { id: noteId };
@@ -188,7 +276,6 @@ const createNoteInTwenty = async (
   }
 };
 
-// FIX: Link task to person using REST API
 const linkTaskToPersonREST = async (
   taskId: string,
   personId: string,
@@ -218,7 +305,6 @@ const linkTaskToPersonREST = async (
       const status = error.response?.status;
       console.error(`❌ Failed to link task to person. Status: ${status}, Error: ${errorMessage}`);
       console.error(`Attempted to link taskId: ${taskId} to personId: ${personId}`);
-      // Don't throw - this is non-critical
     }
   }
 };
@@ -233,6 +319,7 @@ const createTaskInTwenty = async (
     title: string;
     bodyV2: RichTextV2Data;
     dueAt?: string;
+    assigneeId?: string;
   } = {
     title: actionItem.title,
     bodyV2: {
@@ -240,6 +327,17 @@ const createTaskInTwenty = async (
       blocknote: null,
     },
   };
+
+  if (actionItem.assignee) {
+    console.log(`🔍 Looking up assignee: "${actionItem.assignee}"`);
+    const assigneeId = await lookupWorkspaceMemberByName(actionItem.assignee);
+    if (assigneeId) {
+      taskData.assigneeId = assigneeId;
+      console.log(`✅ Task will be assigned to: ${actionItem.assignee} (${assigneeId})`);
+    } else {
+      console.log(`⚠️ Could not find workspace member "${actionItem.assignee}", task will be unassigned`);
+    }
+  }
 
   if (actionItem.dueDate) {
     const date = new Date(actionItem.dueDate);
@@ -262,7 +360,6 @@ const createTaskInTwenty = async (
     
     console.log('📦 Task API Response:', JSON.stringify(response.data));
     
-    // Twenty CRM REST API returns: { data: { createTask: { id: "...", ... } } }
     const taskId = response.data?.data?.createTask?.id;
     
     if (!taskId) {
@@ -272,7 +369,6 @@ const createTaskInTwenty = async (
     
     console.log(`✅ Task created successfully: ${taskId} - "${actionItem.title}"`);
     
-    // FIX: Link task to person if provided
     if (relatedPersonId) {
       await linkTaskToPersonREST(taskId, relatedPersonId);
     }
@@ -293,58 +389,78 @@ const createTaskInTwenty = async (
   }
 };
 
-const createTasksFromActionItems = async (
-  actionItems: ActionItem[],
-  noteId: string,
-  relatedPersonId: string,
-): Promise<string[]> => {
-  const taskIds: string[] = [];
-
-  for (const actionItem of actionItems) {
-    try {
-      const taskDescription = `${actionItem.description}\n\n*Related to meeting note: ${noteId}*`;
-      console.log(`Creating task: "${actionItem.title}"`);
-      const task = await createTaskInTwenty({
-        ...actionItem,
-        description: taskDescription,
-      }, relatedPersonId);
-      taskIds.push(task.id);
-      console.log(`✅ Task added to results: ${task.id}`);
-    } catch (error) {
-      console.error(`❌ Task creation failed for "${actionItem.title}":`, error instanceof Error ? error.message : error);
-      // Don't push null - skip failed tasks
-    }
+const areSimilarTasks = (task1: string, task2: string): boolean => {
+  const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalized1 = normalize(task1);
+  const normalized2 = normalize(task2);
+  
+  if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) {
+    return true;
   }
-
-  return taskIds;
+  
+  const words1 = normalized1.split(/\s+/).filter(w => w.length > 3);
+  const words2 = normalized2.split(/\s+/).filter(w => w.length > 3);
+  const commonWords = words1.filter(w => words2.includes(w));
+  
+  if (words1.length === 0 || words2.length === 0) return false;
+  
+  const overlapRatio = (commonWords.length * 2) / (words1.length + words2.length);
+  return overlapRatio > 0.7;
 };
 
-const createTasksFromCommitments = async (
+const createAllTasks = async (
+  actionItems: ActionItem[],
   commitments: Commitment[],
   noteId: string,
   relatedPersonId: string,
-): Promise<string[]> => {
+): Promise<{ taskIds: string[], duplicatesSkipped: number }> => {
   const taskIds: string[] = [];
+  const createdTasks: Set<string> = new Set();
+  let duplicatesSkipped = 0;
 
-  for (const commitment of commitments) {
+  const commitmentTasks: ActionItem[] = commitments.map(commitment => ({
+    title: `Follow up: ${commitment.commitment}`,
+    description: `Commitment from ${commitment.person}: ${commitment.commitment}\n\n*Related to meeting note: ${noteId}*`,
+    assignee: commitment.person,
+    dueDate: commitment.dueDate || '',
+  }));
+
+  const allTasks = [
+    ...actionItems.map(item => ({
+      ...item,
+      description: `${item.description}\n\n*Related to meeting note: ${noteId}*`
+    })),
+    ...commitmentTasks
+  ];
+
+  for (const task of allTasks) {
+    // Check if similar task already created
+    let isDuplicate = false;
+    for (const existingTitle of createdTasks) {
+      if (areSimilarTasks(task.title, existingTitle)) {
+        console.log(`⏭️ Skipping duplicate task: "${task.title}" (similar to "${existingTitle}")`);
+        duplicatesSkipped++;
+        isDuplicate = true;
+        break;
+      }
+    }
+    
+    if (isDuplicate) continue;
+
     try {
-      const taskDescription = `Commitment from ${commitment.person}: ${commitment.commitment}\n\n*Related to meeting note: ${noteId}*`;
-      const task = await createTaskInTwenty({
-        title: `Follow up: ${commitment.commitment}`,
-        description: taskDescription,
-        dueDate: commitment.dueDate || '',
-      }, relatedPersonId);
-      taskIds.push(task.id);
+      console.log(`Creating task: "${task.title}"`);
+      const createdTask = await createTaskInTwenty(task, relatedPersonId);
+      taskIds.push(createdTask.id);
+      createdTasks.add(task.title);
+      console.log(`✅ Task added to results: ${createdTask.id}`);
     } catch (error) {
-      console.error(`Commitment task creation failed for "${commitment.commitment}":`, error);
-      // Don't push null - skip failed tasks
+      console.error(`❌ Task creation failed for "${task.title}":`, error instanceof Error ? error.message : error);
     }
   }
 
-  return taskIds;
+  return { taskIds, duplicatesSkipped };
 };
 
-// --- CORE AI ANALYSIS FUNCTION ---
 
 const analyzeTranscript = async (
   transcript: string,
@@ -366,6 +482,13 @@ const analyzeTranscript = async (
 2. Key discussion points (bullet list)
 3. Action items with titles, descriptions, and any mentioned assignees or due dates
 4. Commitments made by participants with names and any mentioned due dates
+
+IMPORTANT for assignees: 
+- Only extract an assignee name if the transcript EXPLICITLY states WHO will do the task
+- Look for phrases like "John will", "assigned to Sarah", "Mike is responsible for"
+- If the transcript mentions a person's name but doesn't explicitly assign them the task, leave assignee empty
+- External contacts mentioned in the transcript should NOT be assignees unless explicitly stated
+- Avoid creating duplicate tasks - if an action item and commitment refer to the same task, only include it once as an action item
 
 Return the response as a JSON object with this structure:
 {
@@ -403,7 +526,6 @@ ${transcript}`;
   return JSON.parse(content) as AnalysisResult;
 };
 
-// --- MAIN SERVERLESS FUNCTION ENTRY POINT ---
 
 export const main = async (
   params: TranscriptWebhookPayload,
@@ -415,7 +537,6 @@ export const main = async (
   };
 
   try {
-    // FIX: Check for existence before comparing (fixes empty string bug)
     const webhookToken = params.token; 
     const expectedSecret = process.env.WEBHOOK_SECRET_TOKEN;
     
@@ -425,12 +546,10 @@ export const main = async (
     
     const { transcript, meetingTitle, meetingDate, relatedPersonId } = params;
 
-    // FIX: Add validation for transcript
     if (!transcript || typeof transcript !== 'string') {
       throw new Error('Transcript is required and must be a string');
     }
 
-    // FIX: Add validation for relatedPersonId
     if (!relatedPersonId || typeof relatedPersonId !== 'string') {
       throw new Error('relatedPersonId is required and must be a string');
     }
@@ -457,23 +576,14 @@ export const main = async (
     );
     log(`✅ Note created: ${note.id}`);
 
-    log('📋 Creating tasks from action items...');
-    const actionItemTaskIds = await createTasksFromActionItems(
+    log('📋 Creating all tasks (with deduplication)...');
+    const { taskIds: allTaskIds, duplicatesSkipped } = await createAllTasks(
       analysis.actionItems,
-      note.id,
-      relatedPersonId,
-    );
-    log(`✅ Action item tasks created: ${actionItemTaskIds.length}`);
-    
-    log('📋 Creating tasks from commitments...');
-    const commitmentTaskIds = await createTasksFromCommitments(
       analysis.commitments,
       note.id,
       relatedPersonId,
     );
-    log(`✅ Commitment tasks created: ${commitmentTaskIds.length}`);
-
-    const allTaskIds = [...actionItemTaskIds, ...commitmentTaskIds];
+    log(`✅ Tasks created: ${allTaskIds.length} (${duplicatesSkipped} duplicates skipped)`);
 
     return {
       success: true,
@@ -482,6 +592,7 @@ export const main = async (
       summary: {
         noteCreated: true,
         tasksCreated: allTaskIds.length,
+        duplicatesSkipped: duplicatesSkipped,
         actionItemsProcessed: analysis.actionItems.length,
         commitmentsProcessed: analysis.commitments.length,
       },
@@ -496,4 +607,4 @@ export const main = async (
       executionLogs: executionLogs,
     };
   }
-};
+}
