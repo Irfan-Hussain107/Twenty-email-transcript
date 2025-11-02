@@ -1,5 +1,3 @@
-// index.ts - Fixed AI prompt to avoid splitting related tasks
-
 import axios from 'axios';
 import OpenAI from 'openai';
 
@@ -439,7 +437,6 @@ const createTasksFromCommitments = async (
   return taskIds;
 };
 
-// FIXED: Improved AI prompt to merge related tasks into single deliverables
 const analyzeTranscript = async (
   transcript: string,
   openaiApiKey: string,
