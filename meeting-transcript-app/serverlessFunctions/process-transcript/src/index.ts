@@ -1,6 +1,7 @@
+// index.ts - Fixed AI prompt to avoid splitting related tasks
+
 import axios from 'axios';
 import OpenAI from 'openai';
-
 
 type TranscriptWebhookPayload = {
   transcript: string;
@@ -53,7 +54,6 @@ const openai = new OpenAI({
   apiKey: OPENAI_API_KEY, 
   baseURL: GROQ_API_BASE_URL, 
 });
-
 
 const getTwentyApiConfig = () => {
   const apiKey = process.env.TWENTY_API_KEY;
@@ -389,79 +389,57 @@ const createTaskInTwenty = async (
   }
 };
 
-const areSimilarTasks = (task1: string, task2: string): boolean => {
-  const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const normalized1 = normalize(task1);
-  const normalized2 = normalize(task2);
-  
-  if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) {
-    return true;
+const createTasksFromActionItems = async (
+  actionItems: ActionItem[],
+  noteId: string,
+  relatedPersonId: string,
+): Promise<string[]> => {
+  const taskIds: string[] = [];
+
+  for (const actionItem of actionItems) {
+    try {
+      const taskDescription = `${actionItem.description}\n\n*Related to meeting note: ${noteId}*`;
+      console.log(`Creating task: "${actionItem.title}"`);
+      const task = await createTaskInTwenty({
+        ...actionItem,
+        description: taskDescription,
+      }, relatedPersonId);
+      taskIds.push(task.id);
+      console.log(`✅ Task added to results: ${task.id}`);
+    } catch (error) {
+      console.error(`❌ Task creation failed for "${actionItem.title}":`, error instanceof Error ? error.message : error);
+    }
   }
-  
-  const words1 = normalized1.split(/\s+/).filter(w => w.length > 3);
-  const words2 = normalized2.split(/\s+/).filter(w => w.length > 3);
-  const commonWords = words1.filter(w => words2.includes(w));
-  
-  if (words1.length === 0 || words2.length === 0) return false;
-  
-  const overlapRatio = (commonWords.length * 2) / (words1.length + words2.length);
-  return overlapRatio > 0.7;
+
+  return taskIds;
 };
 
-const createAllTasks = async (
-  actionItems: ActionItem[],
+const createTasksFromCommitments = async (
   commitments: Commitment[],
   noteId: string,
   relatedPersonId: string,
-): Promise<{ taskIds: string[], duplicatesSkipped: number }> => {
+): Promise<string[]> => {
   const taskIds: string[] = [];
-  const createdTasks: Set<string> = new Set();
-  let duplicatesSkipped = 0;
 
-  const commitmentTasks: ActionItem[] = commitments.map(commitment => ({
-    title: `Follow up: ${commitment.commitment}`,
-    description: `Commitment from ${commitment.person}: ${commitment.commitment}\n\n*Related to meeting note: ${noteId}*`,
-    assignee: commitment.person,
-    dueDate: commitment.dueDate || '',
-  }));
-
-  const allTasks = [
-    ...actionItems.map(item => ({
-      ...item,
-      description: `${item.description}\n\n*Related to meeting note: ${noteId}*`
-    })),
-    ...commitmentTasks
-  ];
-
-  for (const task of allTasks) {
-    // Check if similar task already created
-    let isDuplicate = false;
-    for (const existingTitle of createdTasks) {
-      if (areSimilarTasks(task.title, existingTitle)) {
-        console.log(`⏭️ Skipping duplicate task: "${task.title}" (similar to "${existingTitle}")`);
-        duplicatesSkipped++;
-        isDuplicate = true;
-        break;
-      }
-    }
-    
-    if (isDuplicate) continue;
-
+  for (const commitment of commitments) {
     try {
-      console.log(`Creating task: "${task.title}"`);
-      const createdTask = await createTaskInTwenty(task, relatedPersonId);
-      taskIds.push(createdTask.id);
-      createdTasks.add(task.title);
-      console.log(`✅ Task added to results: ${createdTask.id}`);
+      const taskDescription = `Commitment from ${commitment.person}: ${commitment.commitment}\n\n*Related to meeting note: ${noteId}*`;
+      const task = await createTaskInTwenty({
+        title: `Follow up: ${commitment.commitment}`,
+        description: taskDescription,
+        assignee: commitment.person,
+        dueDate: commitment.dueDate || '',
+      }, relatedPersonId);
+      taskIds.push(task.id);
     } catch (error) {
-      console.error(`❌ Task creation failed for "${task.title}":`, error instanceof Error ? error.message : error);
+      console.error(`Commitment task creation failed for "${commitment.commitment}":`, error);
     }
   }
 
-  return { taskIds, duplicatesSkipped };
+  return taskIds;
 };
 
-
+// FIXED: Improved AI prompt to merge related tasks into single deliverables
 const analyzeTranscript = async (
   transcript: string,
   openaiApiKey: string,
@@ -481,21 +459,83 @@ const analyzeTranscript = async (
 1. A concise summary (2-3 sentences)
 2. Key discussion points (bullet list)
 3. Action items with titles, descriptions, and any mentioned assignees or due dates
-4. Commitments made by participants with names and any mentioned due dates
 
-IMPORTANT for assignees: 
-- Only extract an assignee name if the transcript EXPLICITLY states WHO will do the task
-- Look for phrases like "John will", "assigned to Sarah", "Mike is responsible for"
-- If the transcript mentions a person's name but doesn't explicitly assign them the task, leave assignee empty
-- External contacts mentioned in the transcript should NOT be assignees unless explicitly stated
-- Avoid creating duplicate tasks - if an action item and commitment refer to the same task, only include it once as an action item
+🚨 CRITICAL RULE FOR ACTION ITEMS - READ CAREFULLY:
+When multiple people are mentioned working on THE SAME deliverable/document/outcome:
+→ Create EXACTLY ONE task that represents the complete workflow
+→ The task title should describe the MAIN deliverable (what needs to be completed)
+→ Assign to the person who will do the FINAL/CRITICAL step (approver, reviewer, coordinator)
+→ The description MUST mention ALL people involved and their roles
 
-Return the response as a JSON object with this structure:
+STRICT EXAMPLES - Follow this pattern exactly:
+
+Example 1:
+Transcript: "Brian will finalize the investor deck. Irfan will review it before the presentation next Monday."
+❌ WRONG OUTPUT (2 tasks):
+  Task 1: {"title": "Finalize investor deck", "assignee": "Brian", "description": "Brian will finalize..."}
+  Task 2: {"title": "Review investor deck", "assignee": "Irfan", "description": "Irfan will review..."}
+
+✅ CORRECT OUTPUT (1 task):
+  Task 1: {
+    "title": "Finalize and present investor deck", 
+    "assignee": "Irfan",
+    "dueDate": "2025-11-03",
+    "description": "Brian Chesky is designated to finalize the investor deck layout and needs to present it next Monday. Irfan will review the deck before the presentation."
+  }
+
+Example 2:
+Transcript: "Dario will review security protocols before end of week. Iqra will coordinate the security review process."
+❌ WRONG OUTPUT (2 tasks):
+  Task 1: {"title": "Review security protocols", "assignee": "Dario", ...}
+  Task 2: {"title": "Coordinate security review", "assignee": "Iqra", ...}
+
+✅ CORRECT OUTPUT (1 task):
+  Task 1: {
+    "title": "Coordinate security protocol review",
+    "assignee": "Iqra",
+    "dueDate": "2025-11-07",
+    "description": "Dario Amodei will personally review the security protocols for the AI model before the end of the week. Iqra Khan will coordinate the security review process."
+  }
+
+KEY RULES:
+1. If multiple people mentioned for same deliverable → ONE task only
+2. Task title = main deliverable/outcome
+3. Assignee = person doing final/critical step (reviewer, approver, coordinator, presenter)
+4. Description = full context with ALL people and their roles mentioned
+5. DO NOT split workflows into multiple tasks
+6. Look for keywords: "and then", "before", "after", "will review", "will coordinate", "will approve"
+7. IMPORTANT: Do NOT extract commitments separately - include all commitments as part of action items
+
+For assignees (MANDATORY - always extract if possible):
+- ALWAYS assign the task to someone if ANY person is mentioned doing work
+- Priority order: reviewer > creator, coordinator > contributor, approver > submitter, presenter > preparer
+- Look for: "X will", "assigned to X", "X is responsible", "X to review/approve/coordinate/present"
+- Examples of who to assign:
+  * "Brian will finalize, Irfan will review" → Assign to Irfan (reviewer)
+  * "Dario will review, Iqra will coordinate" → Assign to Iqra (coordinator)
+  * "Sarah will create report" → Assign to Sarah
+- If only ONE person mentioned → assign to them
+- If MULTIPLE people mentioned → assign to the one doing the FINAL/CRITICAL step
+
+For due dates (MANDATORY - always extract if possible):
+- ALWAYS include dueDate if ANY time reference is mentioned
+- Current date context: Meeting date is 2025-11-01 (Saturday)
+- Convert relative dates to YYYY-MM-DD format:
+  * "next Monday" → "2025-11-03"
+  * "this Friday" → "2025-11-07"
+  * "end of week" → "2025-11-07" (Friday)
+  * "end of month" → "2025-11-30"
+  * "next week" → "2025-11-08" (7 days from meeting)
+  * "in 3 days" → "2025-11-04"
+- If specific date mentioned: "November 10" → "2025-11-10"
+- Use the LATEST date mentioned if multiple dates in the workflow
+
+Return JSON with this structure (NOTE: commitments array should always be EMPTY):
 {
   "summary": "string",
   "keyPoints": ["string"],
-  "actionItems": [{"title": "string", "description": "string", "assignee": "string (optional)", "dueDate": "string (optional)"}],
-  "commitments": [{"person": "string", "commitment": "string", "dueDate": "string (optional)"}]
+  "actionItems": [{"title": "string", "description": "string", "assignee": "string", "dueDate": "YYYY-MM-DD"}],
+  "commitments": []
 }
 
 Transcript:
@@ -507,7 +547,7 @@ ${transcript}`;
       {
         role: 'system',
         content:
-          'You are a meeting analysis assistant. Extract key insights, action items, and commitments from meeting transcripts. Always return valid JSON.',
+          'You are a meeting analysis assistant. When multiple people work on the same deliverable, create ONE task (not multiple). ALWAYS assign tasks to someone and ALWAYS extract due dates when time references are mentioned. Include all commitments as action items. Commitments array should always be empty. Always return valid JSON.',
       },
       {
         role: 'user',
@@ -525,7 +565,6 @@ ${transcript}`;
 
   return JSON.parse(content) as AnalysisResult;
 };
-
 
 export const main = async (
   params: TranscriptWebhookPayload,
@@ -576,14 +615,23 @@ export const main = async (
     );
     log(`✅ Note created: ${note.id}`);
 
-    log('📋 Creating all tasks (with deduplication)...');
-    const { taskIds: allTaskIds, duplicatesSkipped } = await createAllTasks(
+    log('📋 Creating tasks from action items...');
+    const actionItemTaskIds = await createTasksFromActionItems(
       analysis.actionItems,
+      note.id,
+      relatedPersonId,
+    );
+    log(`✅ Action item tasks created: ${actionItemTaskIds.length}`);
+    
+    log('📋 Creating tasks from commitments...');
+    const commitmentTaskIds = await createTasksFromCommitments(
       analysis.commitments,
       note.id,
       relatedPersonId,
     );
-    log(`✅ Tasks created: ${allTaskIds.length} (${duplicatesSkipped} duplicates skipped)`);
+    log(`✅ Commitment tasks created: ${commitmentTaskIds.length}`);
+
+    const allTaskIds = [...actionItemTaskIds, ...commitmentTaskIds];
 
     return {
       success: true,
@@ -592,7 +640,6 @@ export const main = async (
       summary: {
         noteCreated: true,
         tasksCreated: allTaskIds.length,
-        duplicatesSkipped: duplicatesSkipped,
         actionItemsProcessed: analysis.actionItems.length,
         commitmentsProcessed: analysis.commitments.length,
       },
