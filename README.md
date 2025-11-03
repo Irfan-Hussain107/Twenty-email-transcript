@@ -117,10 +117,10 @@ Navigate to:
 
 ## Demo Preview
 
-![process](meeting-transcript-app/public/images/process-transcript.png)
+![process](meeting-transcript-app/public/process-transcript.png)
 
 <video width="600" controls>
-  <source src="./meeting-transcript-app/public/images/UnpaidInterns.mp4" type="video/mp4">
+  <source src="./meeting-transcript-app/public/UnpaidInterns.mp4" type="video/mp4">
   
 </video>
 
