@@ -1,74 +1,98 @@
-## 🧠 AI-Powered Meeting Transcript to CRM Data Integration
+# Meeting Transcript - AI-Powered CRM Integration
 
----
+## Overview
+Automatically transform meeting transcripts into structured CRM data using AI. This Twenty CRM app processes unstructured meeting notes received via webhooks and creates organized notes, tasks, and assignments.
 
-### Overview
+## Features
 
-This feature automatically transforms meeting transcripts into structured CRM data using AI.  
-When unstructured meeting notes are received via a **webhook**, the system processes them and creates organized **notes, tasks, and assignments** directly in Twenty CRM.
+- **🤖 AI-Powered Analysis**: Extracts summaries, action items, assignees, and due dates from natural language transcripts
+- **📋 Smart Task Consolidation**: Merges related sub-tasks into unified deliverables (e.g., "draft" + "review" + "present" → one consolidated task)
+- **👥 Intelligent Assignment**: Uses GraphQL member lookup to match extracted assignee names to workspace member IDs with flexible string matching
+- **🔗 Automatic Linking**: Links generated notes and tasks to relevant contacts using `noteTargets` and `taskTargets`
+- **🗓️ Date Parsing**: Converts relative date expressions (e.g., "next Monday", "end of week") into ISO-formatted dates for accurate scheduling
 
----
+## Requirements
 
-### Key Features
+- [Twenty CLI](https://www.npmjs.com/package/twenty-cli) - Install globally: `npm install -g twenty-cli`
+- Twenty CRM instance with API access
+- API key from [Settings > API & Webhooks](https://twenty.com/settings/api-webhooks)
+- OpenAI API key or compatible service (Groq, etc.)
 
-- 🤖 **AI-Powered Analysis:**  
-  Extracts summaries, action items, assignees, and due dates from natural language transcripts.
+## Installation
 
-- 🗂 **Smart Task Consolidation:**  
-  Merges related sub-tasks into unified deliverables  
-  _(e.g., `"draft"` + `"review"` + `"present"` → one consolidated task)._
+1. **Authenticate with Twenty CLI:**
+   ```bash
+   twenty auth login
+   ```
 
-- 🧑‍🤝‍🧑 **Intelligent Assignment:**  
-  Uses GraphQL member lookup to match extracted assignee names to workspace member IDs with flexible string matching.
+2. **Configure environment variables:**
+   
+   Copy `.env.example` to `.env` and fill in your credentials:
+   ```bash
+   cp .env.example .env
+   ```
 
-- 🔗 **Automatic Linking:**  
-  Links generated **notes** and **tasks** to relevant contacts using `noteTargets` and `taskTargets`.
+   Required environment variables:
+   - `OPENAI_API_KEY`: Your OpenAI or Groq API key
+   - `TWENTY_API_KEY`: Generated from your Twenty CRM instance
+   - `TWENTY_API_URL`: Your Twenty CRM instance URL (e.g., https://your-instance.twenty.com)
+   - `WEBHOOK_SECRET_TOKEN`: Secret token for webhook authentication
+   - `OPENAI_API_BASE_URL`: Base URL for OpenAI-compatible API (defaults to https://api.openai.com/v1)
 
-- 📅 **Date Parsing:**  
-  Converts relative date expressions (e.g., “next Monday”, “end of week”) into **ISO-formatted dates** for accurate scheduling.
+3. **Install dependencies:**
+   ```bash
+   yarn install
+   ```
 
----
+4. **Deploy to your Twenty workspace:**
+   ```bash
+   twenty app sync
+   ```
 
-### Technical Stack
+## Configuration
 
-| Component | Description |
-|----------|-------------|
-| **AI Provider** | Groq (via OpenAI SDK) using the `GPT-OSS-20B` model |
-| **APIs** | Twenty CRM REST API + GraphQL (for member resolution) |
-| **Runtime** | Webhook-triggered serverless function written in **TypeScript** |
+### Using Groq Instead of OpenAI
 
----
+To use Groq's API (which is compatible with OpenAI's SDK), set:
+```bash
+OPENAI_API_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_API_KEY=your-groq-api-key
+```
 
-### Example Input
+### Using OpenAI
+
+To use OpenAI's official API:
+```bash
+OPENAI_API_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=your-openai-api-key
+```
+
+## Usage
+
+Send a POST request to your webhook endpoint with the following payload:
 
 ```json
 {
-  "transcript": "During the Project Phoenix Kick-off on November 1st, 2025, we discussed securing the Series B funding. ACTION: Dylan Field is designated to finalize the investor deck layout and needs to present it next Monday, November 4th. Irfan Hussain will review the deck before the presentation by Monday morning. COMMITMENT: Dario Amodei confirmed he would personally review the security protocols for the AI model before the end of this week, by Friday November 7th. Iqra Khan will coordinate the security review process and ensure completion by the Friday deadline.",
+  "transcript": "During the Project Phoenix Kick-off on November 1st, 2025...",
   "meetingTitle": "Project Phoenix Kick-off",
   "meetingDate": "2025-11-01",
   "participants": [
     "Brian Chesky",
     "Dario Amodei",
-    "Iqra Khan",
-    "Irfan Hussain",
-    "Dylan Field"
+    "Iqra Khan"
   ],
-  "token": "e6d9d54e51953fd5a451cca933c63e7f8783b001f0c45be95be9d09ee06c6cda",
-  "relatedPersonId": "6c4b0e98-b69e-42a4-ba0c-fd2eeafca642"
+  "token": "your-webhook-secret-token",
+  "relatedPersonId": "person-uuid-from-crm"
 }
 ```
 
-
-### Example Output
+### Response
 
 ```json
 {
   "success": true,
-  "noteId": "9cc3b4fc-ae37-4b3e-a343-a4c69cf6b1e8",
-  "taskIds": [
-    "0f408062-0dcc-49f0-9866-1ea05392661d",
-    "2b3739bf-0653-4101-9419-6a44ea5135cd"
-  ],
+  "noteId": "note-uuid",
+  "taskIds": ["task-uuid-1", "task-uuid-2"],
   "summary": {
     "noteCreated": true,
     "tasksCreated": 2,
@@ -77,51 +101,47 @@ When unstructured meeting notes are received via a **webhook**, the system proce
   },
   "executionLogs": [
     "✅ Validation passed",
-    "📝 RelatedPersonId: 6c4b0e98-b69e-42a4-ba0c-fd2eeafca642",
     "🤖 Starting transcript analysis...",
-    "✅ Analysis complete: 2 action items, 0 commitments",
-    "📄 Creating note in Twenty CRM...",
-    "✅ Note created: 9cc3b4fc-ae37-4b3e-a343-a4c69cf6b1e8",
-    "📋 Creating tasks from action items...",
-    "✅ Action item tasks created: 2",
-    "📋 Creating tasks from commitments...",
-    "✅ Commitment tasks created: 0"
+    "✅ Analysis complete"
   ]
 }
 ```
-### 🔗 Webhook Setup (inside Twenty)
 
-Navigate to:  
-**Twenty → Workspace Settings → APIs & Webhook → + New Webhook**
+## Technical Stack
 
-| Field  | Value                                     |
-|--------|-------------------------------------------|
-| **Method** | `POST`                                 |
-| **URL**    | your deployed endpoint URL             |
-| **Secret** | Generate one & store same in `.env`   |
+| Component | Description |
+|-----------|-------------|
+| **Runtime** | Webhook-triggered serverless function (TypeScript) |
+| **AI Provider** | OpenAI-compatible API (OpenAI, Groq, etc.) |
+| **APIs** | Twenty CRM REST API + GraphQL |
+| **Model** | `openai/gpt-oss-20b` (configurable) |
 
+## Development
 
+### Build
+```bash
+yarn build
+```
 
-### Environment Variables
+### Type Check
+```bash
+yarn type-check
+```
 
-| Variable Name     | Description |
-|-------------------|-------------|
-| `GROQ_API_KEY`    | API key for authenticating requests to the Groq AI service. |
-| `TWENTY_API_KEY`  | Authentication token used to access the Twenty CRM API. |
-| `TWENTY_API_URL`  | Base URL for the Twenty CRM REST API. |
-| `WEBHOOK_SECRET`  | Secret key used to validate incoming webhook requests for security. |
-| `NODE_ENV`        | Defines the runtime environment (development, production, etc.). |
-| `LOG_LEVEL`       | Controls verbosity of logs (info, debug, error). |
+## Environment Variables
 
----
+| Variable | Required | Secret | Description |
+|----------|----------|--------|-------------|
+| `OPENAI_API_KEY` | Yes | Yes | API key for OpenAI-compatible service |
+| `TWENTY_API_KEY` | Yes | Yes | Twenty CRM API authentication token |
+| `TWENTY_API_URL` | Yes | No | Base URL for Twenty CRM instance |
+| `WEBHOOK_SECRET_TOKEN` | Yes | Yes | Secret for webhook request validation |
+| `OPENAI_API_BASE_URL` | No | No | Base URL for AI service (defaults to OpenAI) |
 
-## Demo Preview
+## License
 
-![process](meeting-transcript-app/public/process-transcript.png)
+MIT
 
-<video width="600" controls>
-  <source src="./meeting-transcript-app/public/UnpaidInterns.mp4" type="video/mp4">
-  
-</video>
+## Contributing
 
-
+Contributions are welcome! Please feel free to submit a Pull Request.
