@@ -43,7 +43,7 @@ type TwentyApiResponse = {
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY; 
 const WEBHOOK_SECRET_TOKEN = process.env.WEBHOOK_SECRET_TOKEN;
 const TWENTY_API_URL = process.env.TWENTY_API_URL;
-const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL || 'https://api.openai.com/v1';
+const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL;
 
 const LLM_MODEL_ID = 'openai/gpt-oss-20b'; 
 const OPENAI_TEMPERATURE = 0.3; 
