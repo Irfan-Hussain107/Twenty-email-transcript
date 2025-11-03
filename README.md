@@ -89,6 +89,17 @@ When unstructured meeting notes are received via a **webhook**, the system proce
   ]
 }
 ```
+### 🔗 Webhook Setup (inside Twenty)
+
+Navigate to:  
+**Twenty → Workspace Settings → APIs & Webhook → + New Webhook**
+
+| Field  | Value                                     |
+|--------|-------------------------------------------|
+| **Method** | `POST`                                 |
+| **URL**    | your deployed endpoint URL             |
+| **Secret** | Generate one & store same in `.env`   |
+
 
 
 ### Environment Variables
@@ -106,11 +117,11 @@ When unstructured meeting notes are received via a **webhook**, the system proce
 
 ## Demo Preview
 
-![process](./meeting-transcript-app/public/images/process-transcript.png)
+![process](meeting-transcript-app/public/images/process-transcript.png)
 
 <video width="600" controls>
   <source src="./meeting-transcript-app/public/images/UnpaidInterns.mp4" type="video/mp4">
-  Your browser does not support the video tag.
+  
 </video>
 
 
