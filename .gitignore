@@ -1,39 +1,31 @@
----------------------------------------
-# NODE/YARN DEPENDENCIES
-# ----------------------------------------
-# Dependency directories
-/node_modules
-.npm
-.yarn
-/dist
+meeting-transcript-app/node_modules/
+meeting-transcript-app/venv/
 
-# npm/yarn/pnpm log files
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+meeting-transcript-app/dist/
+meeting-transcript-app/build/
+meeting-transcript-app/tmp/
+meeting-transcript-app/cache/
+meeting-transcript-app/*.log
+meeting-transcript-app/*.pyc
+meeting-transcript-app/*.db # Often used for a local development database
 
-# ----------------------------------------
-# ENVIRONMENT/SECRETS (HIGH PRIORITY)
-# ----------------------------------------
-# This file contains your local TWENTY_API_KEY, OPENAI_API_KEY, etc.
-# DO NOT commit this file to your repository!
+meeting-transcript-app/.env
+meeting-transcript-app/*.env
+
+meeting-transcript-app/.twenty/
+meeting-transcript-app/.next/
+
+
 .env
 .env.local
 
-# Twenty CRM generated files (if any local sync files are created)
 .twenty-sync-cache
 .twenty-cli-temp/
 
-# ----------------------------------------
-# OS & EDITOR FILES
-# ----------------------------------------
 .DS_Store
 Thumbs.db
 *.bak
 
-# VS Code
 .vscode/
 
-# Ignore TypeScript/JavaScript build artifacts
 *.js.map
