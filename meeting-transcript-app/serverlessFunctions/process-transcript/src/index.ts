@@ -48,7 +48,6 @@ const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL || 'https://api.open
 const LLM_MODEL_ID = 'openai/gpt-oss-20b'; 
 const OPENAI_TEMPERATURE = 0.3; 
 
-// Initialize OpenAI client once at the top level
 const openai = new OpenAI({ 
   apiKey: OPENAI_API_KEY, 
   baseURL: OPENAI_API_BASE_URL, 
@@ -700,7 +699,6 @@ ${transcript}`;
     throw new Error(`Failed to parse AI response as JSON: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 
-  // Validate the response structure
   if (!parsedResult.summary || typeof parsedResult.summary !== 'string') {
     throw new Error('Invalid AI response: missing or invalid summary');
   }
