@@ -116,16 +116,32 @@ Navigate to:
 ```
 
 
-### Example Output
+## Usage
+
+Send a POST request to your webhook endpoint with the following payload:
+
+```json
+{
+  "transcript": "During the Project Phoenix Kick-off on November 1st, 2025...",
+  "meetingTitle": "Project Phoenix Kick-off",
+  "meetingDate": "2025-11-01",
+  "participants": [
+    "Brian Chesky",
+    "Dario Amodei",
+    "Iqra Khan"
+  ],
+  "token": "your-webhook-secret-token",
+  "relatedPersonId": "person-uuid-from-crm"
+}
+```
+
+### Response
 
 ```json
 {
   "success": true,
-  "noteId": "9cc3b4fc-ae37-4b3e-a343-a4c69cf6b1e8",
-  "taskIds": [
-    "0f408062-0dcc-49f0-9866-1ea05392661d",
-    "2b3739bf-0653-4101-9419-6a44ea5135cd"
-  ],
+  "noteId": "note-uuid",
+  "taskIds": ["task-uuid-1", "task-uuid-2"],
   "summary": {
     "noteCreated": true,
     "tasksCreated": 2,
@@ -134,19 +150,13 @@ Navigate to:
   },
   "executionLogs": [
     "✅ Validation passed",
-    "📝 RelatedPersonId: 6c4b0e98-b69e-42a4-ba0c-fd2eeafca642",
     "🤖 Starting transcript analysis...",
-    "✅ Analysis complete: 2 action items, 0 commitments",
-    "📄 Creating note in Twenty CRM...",
-    "✅ Note created: 9cc3b4fc-ae37-4b3e-a343-a4c69cf6b1e8",
-    "📋 Creating tasks from action items...",
-    "✅ Action item tasks created: 2",
-    "📋 Creating tasks from commitments...",
-    "✅ Commitment tasks created: 0"
+    "✅ Analysis complete"
   ]
 }
 ```
-### Technical Stack
+
+## Technical Stack
 
 | Component | Description |
 |----------|-------------|
@@ -168,7 +178,7 @@ yarn type-check
 ```
 
 
-### Environment Variables
+## Environment Variables
 
 | Variable Name     | Description |
 |-------------------|-------------|
@@ -182,6 +192,8 @@ yarn type-check
 
 
 ## Demo Preview
+
+The demo below shows the full workflow where a raw meeting transcript is processed and automatically converted into structured **Notes + Tasks** inside Twenty CRM.
 
 ### Process-Transcript Screenshot
 ![process](https://drive.google.com/uc?export=view&id=1IMayfb77uAr5lvtY7XLn8Yq-_26pxMCY)
