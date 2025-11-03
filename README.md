@@ -56,8 +56,8 @@ When unstructured meeting notes are received via a **webhook**, the system proce
   "token": "e6d9d54e51953fd5a451cca933c63e7f8783b001f0c45be95be9d09ee06c6cda",
   "relatedPersonId": "6c4b0e98-b69e-42a4-ba0c-fd2eeafca642"
 }
+```
 
----
 
 ### Example Output
 
@@ -88,8 +88,8 @@ When unstructured meeting notes are received via a **webhook**, the system proce
     "✅ Commitment tasks created: 0"
   ]
 }
+```
 
----
 
 ### Environment Variables
 
