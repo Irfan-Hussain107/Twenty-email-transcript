@@ -29,15 +29,72 @@ When unstructured meeting notes are received via a **webhook**, the system proce
 
 ---
 
-### Technical Stack
+## Requirements
 
-| Component | Description |
-|----------|-------------|
-| **AI Provider** | Groq (via OpenAI SDK) using the `GPT-OSS-20B` model |
-| **APIs** | Twenty CRM REST API + GraphQL (for member resolution) |
-| **Runtime** | Webhook-triggered serverless function written in **TypeScript** |
+- [Twenty CLI](https://www.npmjs.com/package/twenty-cli) - Install globally: `npm install -g twenty-cli`
+- Twenty CRM instance with API access
+- API key from [Settings > API & Webhooks](https://twenty.com/settings/api-webhooks)
+- OpenAI API key or compatible service (Groq, etc.)
 
----
+## Installation
+
+1. **Authenticate with Twenty CLI:**
+   ```bash
+   twenty auth login
+   ```
+
+2. **Configure environment variables:**
+   
+   Copy `.env.example` to `.env` and fill in your credentials:
+   ```bash
+   cp .env.example .env
+   ```
+
+   Required environment variables:
+   - `OPENAI_API_KEY`: Your OpenAI or Groq API key
+   - `TWENTY_API_KEY`: Generated from your Twenty CRM instance
+   - `TWENTY_API_URL`: Your Twenty CRM instance URL (e.g., https://your-instance.twenty.com)
+   - `WEBHOOK_SECRET_TOKEN`: Secret token for webhook authentication
+   - `OPENAI_API_BASE_URL`: Base URL for OpenAI-compatible API (defaults to https://api.openai.com/v1)
+
+3. **Install dependencies:**
+   ```bash
+   yarn install
+   ```
+
+4. **Deploy to your Twenty workspace:**
+   ```bash
+   twenty app sync
+   ```
+
+## Configuration
+
+### Using Groq Instead of OpenAI
+
+To use Groq's API (which is compatible with OpenAI's SDK), set:
+```bash
+OPENAI_API_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_API_KEY=your-groq-api-key
+```
+
+### Using OpenAI
+
+To use OpenAI's official API:
+```bash
+OPENAI_API_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=your-openai-api-key
+```
+
+### 🔗 Webhook Setup (inside Twenty)
+
+Navigate to:  
+**Twenty → Workspace Settings → APIs & Webhook → + New Webhook**
+
+| Field  | Value                                     |
+|--------|-------------------------------------------|
+| **Method** | `POST`                                 |
+| **URL**    | your deployed endpoint URL             |
+| **Secret** | Generate one & store same in `.env`   |
 
 ### Example Input
 
@@ -89,17 +146,26 @@ When unstructured meeting notes are received via a **webhook**, the system proce
   ]
 }
 ```
-### 🔗 Webhook Setup (inside Twenty)
+### Technical Stack
 
-Navigate to:  
-**Twenty → Workspace Settings → APIs & Webhook → + New Webhook**
+| Component | Description |
+|----------|-------------|
+| **AI Provider** | Groq (via OpenAI SDK) using the `GPT-OSS-20B` model |
+| **APIs** | Twenty CRM REST API + GraphQL (for member resolution) |
+| **Runtime** | Webhook-triggered serverless function written in **TypeScript** |
 
-| Field  | Value                                     |
-|--------|-------------------------------------------|
-| **Method** | `POST`                                 |
-| **URL**    | your deployed endpoint URL             |
-| **Secret** | Generate one & store same in `.env`   |
+---
+## Development
 
+### Build
+```bash
+yarn build
+```
+
+### Type Check
+```bash
+yarn type-check
+```
 
 
 ### Environment Variables
