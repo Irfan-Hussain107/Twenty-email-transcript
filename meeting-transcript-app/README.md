@@ -113,13 +113,13 @@ Navigate to:
 | `NODE_ENV`        | Defines the runtime environment (development, production, etc.). |
 | `LOG_LEVEL`       | Controls verbosity of logs (info, debug, error). |
 
----
+
 
 ## Demo Preview
 
-![process](public/process-transcript.png)
+### Process-Transcript Screenshot
+![process](https://drive.google.com/uc?export=view&id=1IMayfb77uAr5lvtY7XLn8Yq-_26pxMCY)
 
-<video width="600" controls>
-  <source src="public/UnpaidInterns.mp4" type="video/mp4">
-  
-</video>
+### Demo Video
+[Watch Demo Video](https://drive.google.com/file/d/1WpzrNBbKBFD5ztGwNuS_SMi7yJBr5AK8/view?usp=sharing)
+
