@@ -96,7 +96,7 @@ Navigate to:
 | **URL**    | your deployed endpoint URL             |
 | **Secret** | Generate one & store same in `.env`   |
 
-### Example Input
+
 
 ```json
 {
