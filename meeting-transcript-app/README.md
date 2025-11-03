@@ -96,26 +96,6 @@ Navigate to:
 | **URL**    | your deployed endpoint URL             |
 | **Secret** | Generate one & store same in `.env`   |
 
-
-
-```json
-{
-  "transcript": "During the Project Phoenix Kick-off on November 1st, 2025, we discussed securing the Series B funding. ACTION: Dylan Field is designated to finalize the investor deck layout and needs to present it next Monday, November 4th. Irfan Hussain will review the deck before the presentation by Monday morning. COMMITMENT: Dario Amodei confirmed he would personally review the security protocols for the AI model before the end of this week, by Friday November 7th. Iqra Khan will coordinate the security review process and ensure completion by the Friday deadline.",
-  "meetingTitle": "Project Phoenix Kick-off",
-  "meetingDate": "2025-11-01",
-  "participants": [
-    "Brian Chesky",
-    "Dario Amodei",
-    "Iqra Khan",
-    "Irfan Hussain",
-    "Dylan Field"
-  ],
-  "token": "e6d9d54e51953fd5a451cca933c63e7f8783b001f0c45be95be9d09ee06c6cda",
-  "relatedPersonId": "6c4b0e98-b69e-42a4-ba0c-fd2eeafca642"
-}
-```
-
-
 ## Usage
 
 Send a POST request to your webhook endpoint with the following payload:
@@ -198,6 +178,6 @@ The demo below shows the full workflow where a raw meeting transcript is process
 ### Process-Transcript Screenshot
 ![process](https://drive.google.com/uc?export=view&id=1IMayfb77uAr5lvtY7XLn8Yq-_26pxMCY)
 
-### Demo Video
+## Demo Video
 [Watch Demo Video](https://drive.google.com/file/d/1WpzrNBbKBFD5ztGwNuS_SMi7yJBr5AK8/view?usp=sharing)
 
