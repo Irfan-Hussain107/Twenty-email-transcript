@@ -33,11 +33,11 @@ Automatically transform meeting transcripts into structured CRM data using AI. T
    ```
 
    Required environment variables:
-   - `OPENAI_API_KEY`: Your OpenAI or Groq API key
+   - `AI_PROVIDER_API_KEY`: Your OpenAI or Groq API key
    - `TWENTY_API_KEY`: Generated from your Twenty CRM instance
    - `TWENTY_API_URL`: Your Twenty CRM instance URL (e.g., https://your-instance.twenty.com)
    - `WEBHOOK_SECRET_TOKEN`: Secret token for webhook authentication
-   - `OPENAI_API_BASE_URL`: Base URL for OpenAI-compatible API (defaults to https://api.openai.com/v1)
+   - `AI_PROVIDER_API_BASE_URL`: Base URL for OpenAI-compatible API (defaults to https://api.openai.com/v1)
 
 3. **Install dependencies:**
    ```bash
@@ -55,16 +55,16 @@ Automatically transform meeting transcripts into structured CRM data using AI. T
 
 To use Groq's API (which is compatible with OpenAI's SDK), set:
 ```bash
-OPENAI_API_BASE_URL=https://api.groq.com/openai/v1
-OPENAI_API_KEY=your-groq-api-key
+AI_PROVIDER_API_BASE_URL=https://api.groq.com/openai/v1
+AI_PROVIDER_API_KEY=your-groq-api-key
 ```
 
 ### Using OpenAI
 
 To use OpenAI's official API:
 ```bash
-OPENAI_API_BASE_URL=https://api.openai.com/v1
-OPENAI_API_KEY=your-openai-api-key
+AI_PROVIDER_API_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_API_KEY=your-openai-api-key
 ```
 
 ## Usage
@@ -132,11 +132,11 @@ yarn type-check
 
 | Variable | Required | Secret | Description |
 |----------|----------|--------|-------------|
-| `OPENAI_API_KEY` | Yes | Yes | API key for OpenAI-compatible service |
+| `AI_PROVIDER_API_KEY` | Yes | Yes | API key for OpenAI-compatible service |
 | `TWENTY_API_KEY` | Yes | Yes | Twenty CRM API authentication token |
 | `TWENTY_API_URL` | Yes | No | Base URL for Twenty CRM instance |
 | `WEBHOOK_SECRET_TOKEN` | Yes | Yes | Secret for webhook request validation |
-| `OPENAI_API_BASE_URL` | No | No | Base URL for AI service (defaults to OpenAI) |
+| `AI_PROVIDER_API_BASE_URL` | No | No | Base URL for AI service (defaults to OpenAI) |
 
 ## License
 
