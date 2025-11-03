@@ -40,17 +40,17 @@ type TwentyApiResponse = {
   id: string;
 };
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY; 
+const AI_PROVIDER_API_KEY = process.env.AI_PROVIDER_API_KEY; 
 const WEBHOOK_SECRET_TOKEN = process.env.WEBHOOK_SECRET_TOKEN;
 const TWENTY_API_URL = process.env.TWENTY_API_URL;
-const OPENAI_API_BASE_URL = process.env.OPENAI_API_BASE_URL;
+const AI_PROVIDER_API_BASE_URL = process.env.AI_PROVIDER_API_BASE_URL;
 
 const LLM_MODEL_ID = 'openai/gpt-oss-20b'; 
 const OPENAI_TEMPERATURE = 0.3; 
 
 const openai = new OpenAI({ 
-  apiKey: OPENAI_API_KEY, 
-  baseURL: OPENAI_API_BASE_URL, 
+  apiKey: AI_PROVIDER_API_KEY, 
+  baseURL: AI_PROVIDER_API_BASE_URL, 
 });
 
 const getTwentyApiConfig = () => {
@@ -742,9 +742,9 @@ export const main = async (
       throw new Error('relatedPersonId is required and must be a string');
     }
 
-    const openaiApiKey = process.env.OPENAI_API_KEY;
+    const openaiApiKey = process.env.AI_PROVIDER_API_KEY;
     if (!openaiApiKey) {
-      throw new Error('OPENAI_API_KEY environment variable is not set');
+      throw new Error('AI_PROVIDER_API_KEY environment variable is not set');
     }
 
     log('✅ Validation passed');
