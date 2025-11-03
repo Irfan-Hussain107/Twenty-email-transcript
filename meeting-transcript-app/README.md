@@ -123,3 +123,100 @@ Navigate to:
   <source src="public/UnpaidInterns.mp4" type="video/mp4">
   
 </video>
+
+## Configuration
+
+### Using Groq Instead of OpenAI
+
+To use Groq's API (which is compatible with OpenAI's SDK), set:
+```bash
+OPENAI_API_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_API_KEY=your-groq-api-key
+```
+
+### Using OpenAI
+
+To use OpenAI's official API:
+```bash
+OPENAI_API_BASE_URL=https://api.openai.com/v1
+OPENAI_API_KEY=your-openai-api-key
+```
+
+## Usage
+
+Send a POST request to your webhook endpoint with the following payload:
+
+```json
+{
+  "transcript": "During the Project Phoenix Kick-off on November 1st, 2025...",
+  "meetingTitle": "Project Phoenix Kick-off",
+  "meetingDate": "2025-11-01",
+  "participants": [
+    "Brian Chesky",
+    "Dario Amodei",
+    "Iqra Khan"
+  ],
+  "token": "your-webhook-secret-token",
+  "relatedPersonId": "person-uuid-from-crm"
+}
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "noteId": "note-uuid",
+  "taskIds": ["task-uuid-1", "task-uuid-2"],
+  "summary": {
+    "noteCreated": true,
+    "tasksCreated": 2,
+    "actionItemsProcessed": 2,
+    "commitmentsProcessed": 0
+  },
+  "executionLogs": [
+    "✅ Validation passed",
+    "🤖 Starting transcript analysis...",
+    "✅ Analysis complete"
+  ]
+}
+```
+
+## Technical Stack
+
+| Component | Description |
+|-----------|-------------|
+| **Runtime** | Webhook-triggered serverless function (TypeScript) |
+| **AI Provider** | OpenAI-compatible API (OpenAI, Groq, etc.) |
+| **APIs** | Twenty CRM REST API + GraphQL |
+| **Model** | `openai/gpt-oss-20b` (configurable) |
+
+## Development
+
+### Build
+```bash
+yarn build
+```
+
+### Type Check
+```bash
+yarn type-check
+```
+
+## Environment Variables
+
+| Variable | Required | Secret | Description |
+|----------|----------|--------|-------------|
+| `OPENAI_API_KEY` | Yes | Yes | API key for OpenAI-compatible service |
+| `TWENTY_API_KEY` | Yes | Yes | Twenty CRM API authentication token |
+| `TWENTY_API_URL` | Yes | No | Base URL for Twenty CRM instance |
+| `WEBHOOK_SECRET_TOKEN` | Yes | Yes | Secret for webhook request validation |
+| `OPENAI_API_BASE_URL` | No | No | Base URL for AI service (defaults to OpenAI) |
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
