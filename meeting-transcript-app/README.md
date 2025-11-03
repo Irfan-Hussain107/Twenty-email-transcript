@@ -160,14 +160,13 @@ yarn type-check
 
 ## Environment Variables
 
-| Variable Name     | Description |
-|-------------------|-------------|
-| `GROQ_API_KEY`    | API key for authenticating requests to the Groq AI service. |
-| `TWENTY_API_KEY`  | Authentication token used to access the Twenty CRM API. |
-| `TWENTY_API_URL`  | Base URL for the Twenty CRM REST API. |
-| `WEBHOOK_SECRET`  | Secret key used to validate incoming webhook requests for security. |
-| `NODE_ENV`        | Defines the runtime environment (development, production, etc.). |
-| `LOG_LEVEL`       | Controls verbosity of logs (info, debug, error). |
+| Variable | Required | Secret | Description |
+|----------|----------|--------|-------------|
+| `OPENAI_API_KEY` | Yes | Yes | API key for OpenAI-compatible service |
+| `TWENTY_API_KEY` | Yes | Yes | Twenty CRM API authentication token |
+| `TWENTY_API_URL` | Yes | No | Base URL for Twenty CRM instance |
+| `WEBHOOK_SECRET_TOKEN` | Yes | Yes | Secret for webhook request validation |
+| `OPENAI_API_BASE_URL` | No | No | Base URL for AI service (defaults to OpenAI) |
 
 
 
